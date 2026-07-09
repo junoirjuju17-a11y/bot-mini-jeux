@@ -11,5 +11,10 @@ async function deployCommands() {
 
 deployCommands().catch((error) => {
   console.error("Impossible d'enregistrer les commandes slash:", error);
+
+  if (error.code === 10002) {
+    console.error('Discord dit "Unknown Application": vérifie que CLIENT_ID est bien l’Application ID du même bot que DISCORD_TOKEN.');
+  }
+
   process.exit(1);
 });

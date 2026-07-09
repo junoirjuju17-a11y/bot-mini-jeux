@@ -35,13 +35,16 @@ console.log(`Commandes slash chargées localement: ${loadedCommands.map((command
 console.log(`Commandes texte: ${config.enableMessageContentIntent ? `actives avec le préfixe ${config.prefix}` : 'désactivées'}`);
 console.log(`Intents demandés: ${intents.join(', ')}`);
 
-client.once('ready', async () => {
-  console.log(`Connecté en tant que ${client.user.tag}.`);
+client.once('clientReady', async (readyClient) => {
+  console.log(`Connecté en tant que ${readyClient.user.tag}.`);
 
-  logConfigurationHelp();
+  const runtimeClientId = getRuntimeClientId(readyClient);
+  const runtimeGuildId = getRuntimeGuildId(readyClient);
+
+  logConfigurationHelp(runtimeClientId, runtimeGuildId, readyClient);
 
   if (config.registerCommandsOnStart) {
-    await registerCommandsOnStart();
+    await registerCommandsOnStart(runtimeClientId, runtimeGuildId);
   } else {
     console.log('Enregistrement automatique des commandes slash désactivé. Lance `npm run deploy:commands` manuellement.');
   }
@@ -92,32 +95,69 @@ client.login(config.token).catch((error) => {
   process.exit(1);
 });
 
-async function registerCommandsOnStart() {
-  if (!config.clientId) {
-    console.warn('CLIENT_ID manquant: les commandes slash ne peuvent pas être enregistrées automatiquement.');
+async function registerCommandsOnStart(runtimeClientId, runtimeGuildId) {
+  if (!runtimeClientId) {
+    console.warn('ID application introuvable: les commandes slash ne peuvent pas être enregistrées automatiquement.');
     return;
   }
 
   try {
-    const result = await deploySlashCommands(config);
+    const result = await deploySlashCommands({
+      ...config,
+      clientId: runtimeClientId,
+      guildId: runtimeGuildId,
+    });
     const names = result.registeredCommands.map((command) => `/${command.name}`).join(', ');
 
     console.log(`${result.registeredCommands.length} commande(s) slash enregistrée(s) (${result.scope}).`);
     console.log(`Commandes slash visibles côté Discord: ${names || 'aucune'}`);
   } catch (error) {
     console.error("Échec de l'enregistrement automatique des commandes slash:", error);
+
+    if (error.code === 10002) {
+      console.error('Discord dit "Unknown Application": le CLIENT_ID du .env ne correspond probablement pas au token. Au démarrage, le bot utilise maintenant son ID réel, donc vérifie surtout que tu as redéployé cette version.');
+    }
   }
 }
 
-function logConfigurationHelp() {
-  console.log(`CLIENT_ID: ${config.clientId ? 'présent' : 'manquant'}`);
-  console.log(`GUILD_ID: ${config.guildId || 'absent, déploiement global si les commandes sont enregistrées'}`);
+function logConfigurationHelp(runtimeClientId, runtimeGuildId, readyClient) {
+  console.log(`CLIENT_ID .env: ${config.clientId || 'absent'}`);
+  console.log(`CLIENT_ID réel du bot connecté: ${runtimeClientId}`);
 
-  if (config.clientId) {
-    console.log(`Lien d'invitation conseillé: ${buildInviteUrl(config.clientId)}`);
-  } else {
-    console.log("Ajoute CLIENT_ID pour générer le lien d'invitation et enregistrer les commandes slash.");
+  if (config.clientId && runtimeClientId && config.clientId !== runtimeClientId) {
+    console.warn('Attention: CLIENT_ID dans .env ne correspond pas au bot connecté. Utilise le CLIENT_ID réel affiché ci-dessus.');
   }
+
+  console.log(`Serveurs où le bot est présent: ${readyClient.guilds.cache.size}`);
+  console.log(`GUILD_ID utilisé pour les slash commands: ${runtimeGuildId || 'absent, déploiement global'}`);
+
+  if (!config.guildId && runtimeGuildId) {
+    console.log(`GUILD_ID absent dans .env: utilisation automatique du seul serveur détecté (${runtimeGuildId}).`);
+  }
+
+  if (!runtimeGuildId) {
+    console.warn('Aucun GUILD_ID serveur utilisé: les commandes slash globales peuvent mettre du temps à apparaître. Ajoute GUILD_ID pour un affichage rapide.');
+  }
+
+  if (runtimeClientId) {
+    console.log(`Lien d'invitation conseillé: ${buildInviteUrl(runtimeClientId)}`);
+  }
+}
+
+function getRuntimeClientId(readyClient) {
+  return readyClient.application?.id || readyClient.user?.id || config.clientId;
+}
+
+function getRuntimeGuildId(readyClient) {
+  if (config.guildId) {
+    return config.guildId;
+  }
+
+  if (readyClient.guilds.cache.size === 1) {
+    return readyClient.guilds.cache.first().id;
+  }
+
+  return null;
 }
 
 function buildInviteUrl(clientId) {
