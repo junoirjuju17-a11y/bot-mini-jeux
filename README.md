@@ -9,16 +9,30 @@ Bot Discord en Node.js avec Discord.js. Il fournit une base extensible pour ajou
 - L'intent `Guilds`
 - Pour les commandes texte `!pfc`, les intents `Guild Messages` et `Message Content`
 
+## Fichiers importants pour GitHub
+
+- `.env` contient tes vraies clés : il ne doit jamais être envoyé sur GitHub.
+- `.env.example` est un modèle : il doit être envoyé sur GitHub.
+- `env.example` est une copie visible du modèle, utile si ton outil masque les fichiers qui commencent par un point.
+- `.gitignore` empêche Git d'ajouter `.env`, mais il ne retire pas un fichier déjà suivi par Git.
+
+Si tu as déjà envoyé `.env` sur GitHub, retire-le du suivi Git puis change ton token Discord :
+
+```bash
+git rm --cached .env
+git commit -m "Remove local env file"
+```
+
 ## 1. Créer le fichier `.env`
 
-Copie `.env.example` vers `.env`, puis remplis les valeurs :
+Copie `.env.example` ou `env.example` vers `.env`, puis remplis les valeurs :
 
 ```env
 DISCORD_TOKEN=ton_token_discord
 CLIENT_ID=id_application_du_bot
 GUILD_ID=id_du_serveur_de_test
 PREFIX=!
-ENABLE_MESSAGE_CONTENT_INTENT=true
+ENABLE_MESSAGE_CONTENT_INTENT=false
 ```
 
 - `DISCORD_TOKEN` : token du bot, à ne jamais publier.
@@ -28,12 +42,6 @@ ENABLE_MESSAGE_CONTENT_INTENT=true
 - `ENABLE_MESSAGE_CONTENT_INTENT` : mets `true` pour activer les commandes texte.
 
 Important : avant de mettre `ENABLE_MESSAGE_CONTENT_INTENT=true`, active **Message Content Intent** dans le Discord Developer Portal, section `Bot` puis `Privileged Gateway Intents`. Sinon Discord refusera la connexion avec l'erreur `Used disallowed intents`.
-
-Pour garder seulement les commandes slash et éviter l'intent privilégié :
-
-```env
-ENABLE_MESSAGE_CONTENT_INTENT=false
-```
 
 ## 2. Installer les dépendances
 
@@ -65,7 +73,7 @@ Commande slash existante :
 /pfc adversaire:@membre
 ```
 
-Commandes texte :
+Commandes texte, si `ENABLE_MESSAGE_CONTENT_INTENT=true` :
 
 ```text
 !pfc @membre
