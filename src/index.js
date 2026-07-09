@@ -7,7 +7,7 @@ const { handleTextCommand } = require('./textCommands');
 
 const intents = [GatewayIntentBits.Guilds];
 
-if (config.enableTextCommands) {
+if (config.enableMessageContentIntent) {
   intents.push(GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent);
 }
 
@@ -23,7 +23,7 @@ for (const command of loadCommands()) {
 client.once('ready', () => {
   console.log(`Connecté en tant que ${client.user.tag}.`);
 
-  if (!config.enableTextCommands) {
+  if (!config.enableMessageContentIntent) {
     console.log('Commandes texte désactivées. Active ENABLE_MESSAGE_CONTENT_INTENT=true seulement après avoir activé Message Content Intent dans Discord.');
   }
 });
@@ -49,7 +49,7 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-if (config.enableTextCommands) {
+if (config.enableMessageContentIntent) {
   client.on('messageCreate', async (message) => {
     await handleTextCommand(message, {
       client,

@@ -18,16 +18,22 @@ DISCORD_TOKEN=ton_token_discord
 CLIENT_ID=id_application_du_bot
 GUILD_ID=id_du_serveur_de_test
 PREFIX=!
-ENABLE_MESSAGE_CONTENT_INTENT=false
+ENABLE_MESSAGE_CONTENT_INTENT=true
 ```
 
 - `DISCORD_TOKEN` : token du bot, à ne jamais publier.
 - `CLIENT_ID` : identifiant de l'application Discord. Obligatoire seulement pour `npm run deploy:commands`.
 - `GUILD_ID` : identifiant du serveur de test. Optionnel, mais recommandé pour enregistrer les commandes instantanément sur un serveur.
 - `PREFIX` : préfixe des commandes texte. Par défaut : `!`.
-- `ENABLE_MESSAGE_CONTENT_INTENT` : mets `true` seulement si le **Message Content Intent** est activé dans le Discord Developer Portal.
+- `ENABLE_MESSAGE_CONTENT_INTENT` : mets `true` pour activer les commandes texte.
 
-Important : si `ENABLE_MESSAGE_CONTENT_INTENT=true` mais que le Message Content Intent n'est pas activé côté Discord, le bot peut être refusé par Discord avec l'erreur `Used disallowed intents`.
+Important : avant de mettre `ENABLE_MESSAGE_CONTENT_INTENT=true`, active **Message Content Intent** dans le Discord Developer Portal, section `Bot` puis `Privileged Gateway Intents`. Sinon Discord refusera la connexion avec l'erreur `Used disallowed intents`.
+
+Pour garder seulement les commandes slash et éviter l'intent privilégié :
+
+```env
+ENABLE_MESSAGE_CONTENT_INTENT=false
+```
 
 ## 2. Installer les dépendances
 
@@ -53,15 +59,13 @@ Pour lancer le bot, seul `DISCORD_TOKEN` est obligatoire. `CLIENT_ID` sert à en
 
 ## Utilisation
 
-Dans Discord :
+Commande slash existante :
 
 ```text
 /pfc adversaire:@membre
 ```
 
-Le membre défié peut accepter ou refuser. Si la partie est acceptée, les deux joueurs choisissent secrètement pierre, feuille ou ciseaux via des boutons. Le bot révèle ensuite les choix et annonce le résultat.
-
-Si `ENABLE_MESSAGE_CONTENT_INTENT=true` et que le Message Content Intent est activé dans Discord, tu peux aussi jouer avec les commandes texte :
+Commandes texte :
 
 ```text
 !pfc @membre
@@ -72,10 +76,21 @@ Si `ENABLE_MESSAGE_CONTENT_INTENT=true` et que le Message Content Intent est act
 !ciseaux
 ```
 
-Les choix envoyés avec `!pierre`, `!feuille` ou `!ciseaux` sont supprimés par le bot si ses permissions le permettent. Le bot confirme ensuite le choix en message privé quand c'est possible.
+Le bot empêche un joueur de se défier lui-même, bloque les joueurs déjà occupés dans une partie, ignore les interactions des membres qui ne participent pas à la partie, puis annonce le résultat dans le salon.
+
+Les choix envoyés avec `!pierre`, `!feuille` ou `!ciseaux` sont supprimés par le bot si ses permissions le permettent. Le bot confirme ensuite le choix en message privé quand c'est possible. Pour une meilleure confidentialité, donne au bot la permission `Manage Messages` dans le salon.
+
+## Tester rapidement
+
+1. Active **Message Content Intent** dans le Discord Developer Portal.
+2. Mets `ENABLE_MESSAGE_CONTENT_INTENT=true` dans l'environnement du bot.
+3. Lance le bot avec `npm start`.
+4. Dans un salon Discord, écris `!pfc @joueur`.
+5. Le joueur défié écrit `!accepter`.
+6. Chaque joueur écrit l'un des choix : `!pierre`, `!feuille` ou `!ciseaux`.
 
 ## Ajouter un autre mini-jeu
 
 1. Crée une nouvelle classe dans `src/games`.
-2. Ajoute une commande slash dans `src/commands`.
+2. Ajoute une commande slash ou une route texte dans `src/textCommands.js`.
 3. Utilise `gameManager.createGame(...)` pour réserver les joueurs et nettoyer la partie à la fin.
