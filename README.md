@@ -20,8 +20,8 @@ PREFIX=!
 ```
 
 - `DISCORD_TOKEN` : token du bot, à ne jamais publier.
-- `CLIENT_ID` : identifiant de l'application Discord.
-- `GUILD_ID` : identifiant du serveur de test. Il permet d'enregistrer les commandes instantanément sur un serveur.
+- `CLIENT_ID` : identifiant de l'application Discord. Obligatoire seulement pour `npm run deploy:commands`.
+- `GUILD_ID` : identifiant du serveur de test. Optionnel, mais recommandé pour enregistrer les commandes instantanément sur un serveur.
 - `PREFIX` : préfixe des commandes texte. Par défaut : `!`.
 
 Dans le Discord Developer Portal, active aussi le privileged intent **Message Content Intent** pour que le bot puisse lire les commandes texte envoyées dans le chat.
@@ -38,13 +38,15 @@ npm install
 npm run deploy:commands
 ```
 
-Avec `GUILD_ID`, la commande `/pfc` est enregistrée sur ton serveur de test. Sans `GUILD_ID`, elle est enregistrée globalement, ce qui peut prendre plus de temps côté Discord.
+Cette étape exige `CLIENT_ID`. Avec `GUILD_ID`, la commande `/pfc` est enregistrée sur ton serveur de test. Sans `GUILD_ID`, elle est enregistrée globalement, ce qui peut prendre plus de temps côté Discord.
 
 ## 4. Lancer le bot
 
 ```bash
 npm start
 ```
+
+Pour lancer le bot, seul `DISCORD_TOKEN` est obligatoire. Les commandes texte comme `!pfc @membre` fonctionnent sans `CLIENT_ID`; `CLIENT_ID` sert à enregistrer les commandes slash.
 
 ## Utilisation
 

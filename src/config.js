@@ -12,7 +12,7 @@ function requireEnv(name) {
 
 module.exports = {
   token: requireEnv('DISCORD_TOKEN'),
-  clientId: requireEnv('CLIENT_ID'),
+  clientId: process.env.CLIENT_ID || null,
   guildId: process.env.GUILD_ID || null,
   prefix: process.env.PREFIX || '!',
 };

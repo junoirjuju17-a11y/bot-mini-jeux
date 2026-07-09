@@ -3,6 +3,10 @@ const config = require('./config');
 const { loadCommandData } = require('./utils/loadCommands');
 
 async function deployCommands() {
+  if (!config.clientId) {
+    throw new Error('Variable d\'environnement manquante: CLIENT_ID');
+  }
+
   const commands = loadCommandData();
   const rest = new REST({ version: '10' }).setToken(config.token);
 
@@ -20,4 +24,3 @@ deployCommands().catch((error) => {
   console.error("Impossible d'enregistrer les commandes slash:", error);
   process.exit(1);
 });
-
