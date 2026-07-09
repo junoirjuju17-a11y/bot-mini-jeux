@@ -25,5 +25,5 @@ module.exports = {
   clientId: process.env.CLIENT_ID || null,
   guildId: process.env.GUILD_ID || null,
   prefix: process.env.PREFIX || '!',
-  enableTextCommands: readBooleanEnv('ENABLE_TEXT_COMMANDS', false),
+  enableTextCommands: readBooleanEnv('ENABLE_MESSAGE_CONTENT_INTENT', false),
 };

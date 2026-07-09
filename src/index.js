@@ -24,7 +24,7 @@ client.once('ready', () => {
   console.log(`Connecté en tant que ${client.user.tag}.`);
 
   if (!config.enableTextCommands) {
-    console.log('Commandes texte désactivées. Active ENABLE_TEXT_COMMANDS=true et le Message Content Intent pour utiliser !pfc.');
+    console.log('Commandes texte désactivées. Active ENABLE_MESSAGE_CONTENT_INTENT=true seulement après avoir activé Message Content Intent dans Discord.');
   }
 });
 
@@ -59,4 +59,7 @@ if (config.enableTextCommands) {
   });
 }
 
-client.login(config.token);
+client.login(config.token).catch((error) => {
+  console.error('Impossible de connecter le bot Discord:', error);
+  process.exit(1);
+});

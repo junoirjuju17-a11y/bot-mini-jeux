@@ -18,16 +18,16 @@ DISCORD_TOKEN=ton_token_discord
 CLIENT_ID=id_application_du_bot
 GUILD_ID=id_du_serveur_de_test
 PREFIX=!
-ENABLE_TEXT_COMMANDS=false
+ENABLE_MESSAGE_CONTENT_INTENT=false
 ```
 
 - `DISCORD_TOKEN` : token du bot, à ne jamais publier.
 - `CLIENT_ID` : identifiant de l'application Discord. Obligatoire seulement pour `npm run deploy:commands`.
 - `GUILD_ID` : identifiant du serveur de test. Optionnel, mais recommandé pour enregistrer les commandes instantanément sur un serveur.
 - `PREFIX` : préfixe des commandes texte. Par défaut : `!`.
-- `ENABLE_TEXT_COMMANDS` : mets `true` seulement si le **Message Content Intent** est activé dans le Discord Developer Portal.
+- `ENABLE_MESSAGE_CONTENT_INTENT` : mets `true` seulement si le **Message Content Intent** est activé dans le Discord Developer Portal.
 
-Important : si `ENABLE_TEXT_COMMANDS=true` mais que le Message Content Intent n'est pas activé côté Discord, le bot peut être refusé par Discord avec l'erreur `Used disallowed intents`.
+Important : si `ENABLE_MESSAGE_CONTENT_INTENT=true` mais que le Message Content Intent n'est pas activé côté Discord, le bot peut être refusé par Discord avec l'erreur `Used disallowed intents`.
 
 ## 2. Installer les dépendances
 
@@ -61,7 +61,7 @@ Dans Discord :
 
 Le membre défié peut accepter ou refuser. Si la partie est acceptée, les deux joueurs choisissent secrètement pierre, feuille ou ciseaux via des boutons. Le bot révèle ensuite les choix et annonce le résultat.
 
-Si `ENABLE_TEXT_COMMANDS=true` et que le Message Content Intent est activé dans Discord, tu peux aussi jouer avec les commandes texte :
+Si `ENABLE_MESSAGE_CONTENT_INTENT=true` et que le Message Content Intent est activé dans Discord, tu peux aussi jouer avec les commandes texte :
 
 ```text
 !pfc @membre
