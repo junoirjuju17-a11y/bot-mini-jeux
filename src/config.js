@@ -10,9 +10,20 @@ function requireEnv(name) {
   return value;
 }
 
+function readBooleanEnv(name, defaultValue = false) {
+  const value = process.env[name];
+
+  if (value === undefined) {
+    return defaultValue;
+  }
+
+  return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
+}
+
 module.exports = {
   token: requireEnv('DISCORD_TOKEN'),
   clientId: process.env.CLIENT_ID || null,
   guildId: process.env.GUILD_ID || null,
   prefix: process.env.PREFIX || '!',
+  enableTextCommands: readBooleanEnv('ENABLE_TEXT_COMMANDS', false),
 };
