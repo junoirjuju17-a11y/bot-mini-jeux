@@ -24,6 +24,12 @@ const MOVES = {
   },
 };
 
+const TEXT_MOVES = {
+  pierre: 'rock',
+  feuille: 'paper',
+  ciseaux: 'scissors',
+};
+
 class RockPaperScissorsGame extends BaseGame {
   constructor({ challenger, opponent }) {
     super({
@@ -35,39 +41,53 @@ class RockPaperScissorsGame extends BaseGame {
     this.opponent = opponent;
     this.choices = new Map();
     this.accepted = false;
+    this.channelId = null;
+    this.statusMessage = null;
+    this.buttonCollector = null;
+    this.timeout = null;
   }
 
   async start(interaction) {
-    const message = await interaction.reply({
+    this.channelId = interaction.channelId;
+    this.statusMessage = await interaction.reply({
       content: `${this.opponent}, ${this.challenger} te défie à Pierre-Feuille-Ciseaux.`,
       components: [this.createChallengeButtons()],
       fetchReply: true,
     });
 
-    const collector = message.createMessageComponentCollector({
+    this.buttonCollector = this.statusMessage.createMessageComponentCollector({
       componentType: ComponentType.Button,
       time: CHALLENGE_TIMEOUT_MS,
       filter: (buttonInteraction) => buttonInteraction.customId.startsWith(this.customIdPrefix),
     });
 
-    collector.on('collect', async (buttonInteraction) => {
-      await this.handleButton(buttonInteraction, message, collector);
+    this.buttonCollector.on('collect', async (buttonInteraction) => {
+      await this.handleButton(buttonInteraction);
     });
 
-    collector.on('end', async (_, reason) => {
-      if (this.finished) {
+    this.buttonCollector.on('end', async (_, reason) => {
+      if (this.finished || reason === 'completed' || reason === 'refused') {
         return;
       }
 
-      if (reason === 'completed' || reason === 'refused') {
-        return;
-      }
-
-      await message.edit({
+      await this.statusMessage.edit({
         content: 'La partie a expiré.',
         components: [],
       }).catch(console.error);
 
+      this.finish();
+    });
+  }
+
+  async startFromTextCommand(message) {
+    this.channelId = message.channelId;
+    this.statusMessage = await message.channel.send([
+      `${this.opponent}, ${this.challenger} te défie à Pierre-Feuille-Ciseaux.`,
+      'Réponds avec `!accepter` ou `!refuser`.',
+    ].join('\n'));
+
+    this.startTimeout(CHALLENGE_TIMEOUT_MS, async () => {
+      await this.statusMessage.edit('La partie a expiré.').catch(console.error);
       this.finish();
     });
   }
@@ -109,25 +129,41 @@ class RockPaperScissorsGame extends BaseGame {
     );
   }
 
-  async handleButton(interaction, message, collector) {
+  async handleButton(interaction) {
     const action = interaction.customId.slice(this.customIdPrefix.length);
 
     if (action === 'accept') {
-      await this.acceptChallenge(interaction, collector);
+      await this.acceptFromButton(interaction);
       return;
     }
 
     if (action === 'refuse') {
-      await this.refuseChallenge(interaction, message, collector);
+      await this.refuseFromButton(interaction);
       return;
     }
 
     if (action.startsWith('move:')) {
-      await this.registerMove(interaction, message, collector, action.replace('move:', ''));
+      await this.registerButtonMove(interaction, action.replace('move:', ''));
     }
   }
 
-  async acceptChallenge(interaction, collector) {
+  async handleTextCommand(message, command) {
+    if (command === 'accepter') {
+      await this.acceptFromMessage(message);
+      return;
+    }
+
+    if (command === 'refuser') {
+      await this.refuseFromMessage(message);
+      return;
+    }
+
+    if (TEXT_MOVES[command]) {
+      await this.registerTextMove(message, TEXT_MOVES[command]);
+    }
+  }
+
+  async acceptFromButton(interaction) {
     if (interaction.user.id !== this.opponent.id) {
       await interaction.reply({
         content: 'Seul le joueur défié peut accepter cette partie.',
@@ -145,7 +181,7 @@ class RockPaperScissorsGame extends BaseGame {
     }
 
     this.accepted = true;
-    collector.resetTimer({ time: CHOICE_TIMEOUT_MS });
+    this.resetButtonCollectorTimer(CHOICE_TIMEOUT_MS);
 
     await interaction.update({
       content: `${this.challenger} contre ${this.opponent}. Choisissez secrètement votre coup.`,
@@ -153,7 +189,44 @@ class RockPaperScissorsGame extends BaseGame {
     });
   }
 
-  async refuseChallenge(interaction, message, collector) {
+  async acceptFromMessage(message) {
+    if (!this.isExpectedChannel(message)) {
+      await message.reply('Cette partie se joue dans le salon où elle a été lancée.');
+      return;
+    }
+
+    if (message.author.id !== this.opponent.id) {
+      await message.reply('Seul le joueur défié peut accepter cette partie.');
+      return;
+    }
+
+    if (this.accepted) {
+      await message.reply('La partie a déjà commencé.');
+      return;
+    }
+
+    this.accepted = true;
+    this.resetButtonCollectorTimer(CHOICE_TIMEOUT_MS);
+
+    await this.statusMessage.edit({
+      content: [
+        `${this.challenger} contre ${this.opponent}.`,
+        'Choisissez secrètement avec `!pierre`, `!feuille` ou `!ciseaux`.',
+        'Le bot essaiera de supprimer votre message et de vous confirmer le choix en privé.',
+      ].join('\n'),
+      components: [],
+    });
+
+    this.startTimeout(CHOICE_TIMEOUT_MS, async () => {
+      await this.statusMessage.edit({
+        content: 'La partie a expiré : les deux joueurs n’ont pas choisi à temps.',
+        components: [],
+      }).catch(console.error);
+      this.finish();
+    });
+  }
+
+  async refuseFromButton(interaction) {
     if (interaction.user.id !== this.opponent.id) {
       await interaction.reply({
         content: 'Seul le joueur défié peut refuser cette partie.',
@@ -167,11 +240,31 @@ class RockPaperScissorsGame extends BaseGame {
       components: [],
     });
 
-    collector.stop('refused');
+    this.stopButtonCollector('refused');
     this.finish();
   }
 
-  async registerMove(interaction, message, collector, move) {
+  async refuseFromMessage(message) {
+    if (!this.isExpectedChannel(message)) {
+      await message.reply('Cette partie se joue dans le salon où elle a été lancée.');
+      return;
+    }
+
+    if (message.author.id !== this.opponent.id) {
+      await message.reply('Seul le joueur défié peut refuser cette partie.');
+      return;
+    }
+
+    await this.statusMessage.edit({
+      content: `${this.opponent} a refusé le défi de ${this.challenger}.`,
+      components: [],
+    });
+
+    this.stopButtonCollector('refused');
+    this.finish();
+  }
+
+  async registerButtonMove(interaction, move) {
     if (!this.accepted) {
       await interaction.reply({
         content: "La partie n'a pas encore commencé.",
@@ -212,14 +305,56 @@ class RockPaperScissorsGame extends BaseGame {
     });
 
     if (this.choices.size < 2) {
-      await message.edit({
+      await this.statusMessage.edit({
         content: this.getWaitingMessage(),
         components: [this.createMoveButtons()],
       });
       return;
     }
 
-    await this.endGame(message, collector);
+    await this.endButtonGame();
+  }
+
+  async registerTextMove(message, move) {
+    if (!this.isExpectedChannel(message)) {
+      await message.reply('Cette partie se joue dans le salon où elle a été lancée.');
+      return;
+    }
+
+    if (!this.accepted) {
+      await message.reply("La partie n'a pas encore commencé.");
+      return;
+    }
+
+    if (!this.playerIds.includes(message.author.id)) {
+      await message.reply('Tu ne participes pas à cette partie.');
+      return;
+    }
+
+    if (!MOVES[move]) {
+      await message.reply('Choix invalide.');
+      return;
+    }
+
+    if (this.choices.has(message.author.id)) {
+      await this.deleteMoveMessage(message);
+      await this.confirmChoicePrivately(message.author, 'Ton choix est déjà enregistré.');
+      return;
+    }
+
+    this.choices.set(message.author.id, move);
+    await this.deleteMoveMessage(message);
+    await this.confirmChoicePrivately(message.author, `Choix enregistré : ${MOVES[move].label}.`);
+
+    if (this.choices.size < 2) {
+      await this.statusMessage.edit({
+        content: this.getWaitingMessage(),
+        components: [],
+      });
+      return;
+    }
+
+    await this.endTextGame();
   }
 
   getWaitingMessage() {
@@ -233,23 +368,36 @@ class RockPaperScissorsGame extends BaseGame {
     ].join('\n');
   }
 
-  async endGame(message, collector) {
-    const challengerMove = this.choices.get(this.challenger.id);
-    const opponentMove = this.choices.get(this.opponent.id);
-    const result = this.getResult(challengerMove, opponentMove);
-
-    await message.edit({
-      content: [
-        'Résultat de Pierre-Feuille-Ciseaux',
-        `${this.challenger}: ${MOVES[challengerMove].label}`,
-        `${this.opponent}: ${MOVES[opponentMove].label}`,
-        result,
-      ].join('\n'),
+  async endButtonGame() {
+    await this.statusMessage.edit({
+      content: this.getResultMessage(),
       components: [this.createMoveButtons(true)],
     });
 
-    collector.stop('completed');
+    this.stopButtonCollector('completed');
     this.finish();
+  }
+
+  async endTextGame() {
+    await this.statusMessage.edit({
+      content: this.getResultMessage(),
+      components: [],
+    });
+
+    this.stopButtonCollector('completed');
+    this.finish();
+  }
+
+  getResultMessage() {
+    const challengerMove = this.choices.get(this.challenger.id);
+    const opponentMove = this.choices.get(this.opponent.id);
+
+    return [
+      'Résultat de Pierre-Feuille-Ciseaux',
+      `${this.challenger}: ${MOVES[challengerMove].label}`,
+      `${this.opponent}: ${MOVES[opponentMove].label}`,
+      this.getResult(challengerMove, opponentMove),
+    ].join('\n');
   }
 
   getResult(challengerMove, opponentMove) {
@@ -262,6 +410,55 @@ class RockPaperScissorsGame extends BaseGame {
     }
 
     return `${this.opponent} gagne.`;
+  }
+
+  isExpectedChannel(message) {
+    return !this.channelId || message.channelId === this.channelId;
+  }
+
+  resetButtonCollectorTimer(time) {
+    if (this.buttonCollector && !this.buttonCollector.ended) {
+      this.buttonCollector.resetTimer({ time });
+    }
+  }
+
+  stopButtonCollector(reason) {
+    if (this.buttonCollector && !this.buttonCollector.ended) {
+      this.buttonCollector.stop(reason);
+    }
+  }
+
+  startTimeout(time, callback) {
+    this.clearTimeout();
+    this.timeout = setTimeout(async () => {
+      if (!this.finished) {
+        await callback();
+      }
+    }, time);
+  }
+
+  clearTimeout() {
+    if (this.timeout) {
+      clearTimeout(this.timeout);
+      this.timeout = null;
+    }
+  }
+
+  async deleteMoveMessage(message) {
+    await message.delete().catch(() => {});
+  }
+
+  async confirmChoicePrivately(user, content) {
+    await user.send(content).catch(async () => {
+      if (this.statusMessage) {
+        await this.statusMessage.channel.send(`${user}, ton choix est enregistré.`).catch(console.error);
+      }
+    });
+  }
+
+  finish() {
+    this.clearTimeout();
+    super.finish();
   }
 }
 

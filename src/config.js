@@ -14,5 +14,5 @@ module.exports = {
   token: requireEnv('DISCORD_TOKEN'),
   clientId: requireEnv('CLIENT_ID'),
   guildId: process.env.GUILD_ID || null,
+  prefix: process.env.PREFIX || '!',
 };
-

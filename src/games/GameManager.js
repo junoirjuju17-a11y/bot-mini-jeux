@@ -40,9 +40,13 @@ class GameManager {
   isPlayerBusy(playerId) {
     return this.playerGames.has(playerId);
   }
+
+  getGameForPlayer(playerId) {
+    const gameId = this.playerGames.get(playerId);
+    return gameId ? this.games.get(gameId) : null;
+  }
 }
 
 module.exports = {
   GameManager,
 };
-

@@ -3,9 +3,14 @@ const config = require('./config');
 const { GameManager } = require('./games/GameManager');
 const { loadCommands } = require('./utils/loadCommands');
 const { handleInteractionError } = require('./utils/errors');
+const { handleTextCommand } = require('./textCommands');
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
 });
 
 client.commands = new Collection();
@@ -40,5 +45,12 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-client.login(config.token);
+client.on('messageCreate', async (message) => {
+  await handleTextCommand(message, {
+    client,
+    gameManager: client.games,
+    prefix: config.prefix,
+  });
+});
 
+client.login(config.token);
