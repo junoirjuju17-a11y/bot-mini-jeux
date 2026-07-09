@@ -26,4 +26,5 @@ module.exports = {
   guildId: process.env.GUILD_ID || null,
   prefix: process.env.PREFIX || '!',
   enableMessageContentIntent: readBooleanEnv('ENABLE_MESSAGE_CONTENT_INTENT', false),
+  registerCommandsOnStart: readBooleanEnv('REGISTER_COMMANDS_ON_START', true),
 };

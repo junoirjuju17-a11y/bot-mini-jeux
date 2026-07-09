@@ -1,23 +1,12 @@
-const { REST, Routes } = require('discord.js');
 const config = require('./config');
-const { loadCommandData } = require('./utils/loadCommands');
+const { deploySlashCommands } = require('./utils/deployCommands');
 
 async function deployCommands() {
-  if (!config.clientId) {
-    throw new Error('Variable d\'environnement manquante: CLIENT_ID');
-  }
+  const result = await deploySlashCommands(config);
+  const names = result.registeredCommands.map((command) => `/${command.name}`).join(', ');
 
-  const commands = loadCommandData();
-  const rest = new REST({ version: '10' }).setToken(config.token);
-
-  const route = config.guildId
-    ? Routes.applicationGuildCommands(config.clientId, config.guildId)
-    : Routes.applicationCommands(config.clientId);
-
-  await rest.put(route, { body: commands });
-
-  const scope = config.guildId ? `serveur ${config.guildId}` : 'global';
-  console.log(`${commands.length} commande(s) slash enregistrée(s) (${scope}).`);
+  console.log(`${result.registeredCommands.length} commande(s) slash enregistrée(s) (${result.scope}).`);
+  console.log(`Commandes visibles côté Discord: ${names || 'aucune'}`);
 }
 
 deployCommands().catch((error) => {
